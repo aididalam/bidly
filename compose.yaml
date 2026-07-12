@@ -1,0 +1,130 @@
+name: bidly
+
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot_password"]
+      interval: 3s
+      timeout: 4s
+      retries: 40
+
+  mysql-init:
+    image: mysql:8.4
+    depends_on:
+      mysql:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >-
+        mysql -h mysql -uroot -proot_password -e "CREATE DATABASE IF NOT EXISTS auth_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+        CREATE DATABASE IF NOT EXISTS auction_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+        CREATE USER IF NOT EXISTS 'auth_user'@'%' IDENTIFIED BY 'auth_password';
+        CREATE USER IF NOT EXISTS 'auction_user'@'%' IDENTIFIED BY 'auction_password';
+        GRANT ALL PRIVILEGES ON auth_db.* TO 'auth_user'@'%';
+        GRANT ALL PRIVILEGES ON auction_db.* TO 'auction_user'@'%'; FLUSH PRIVILEGES;"
+
+  minio:
+    image: quay.io/minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address :9001
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+      MINIO_API_CORS_ALLOW_ORIGIN: "*"
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 3s
+      timeout: 4s
+      retries: 40
+
+  minio-init:
+    image: quay.io/minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >-
+        mc alias set local http://minio:9000 minioadmin minioadmin123 &&
+        mc mb --ignore-existing local/auction-images &&
+        mc anonymous set download local/auction-images
+
+  auth:
+    build:
+      context: ./bidly-backend/bidly-backend-auth
+      target: runtime
+    restart: unless-stopped
+    environment:
+      AUTH_SERVICE_PORT: "8081"
+      AUTH_DATABASE_URL: auth_user:auth_password@tcp(mysql:3306)/auth_db?parseTime=true&loc=UTC&charset=utf8mb4&collation=utf8mb4_unicode_ci
+      JWT_SECRET: bidly-local-shared-secret-change-me-123456789
+      JWT_EXPIRY: 24h
+    depends_on:
+      mysql-init:
+        condition: service_completed_successfully
+    ports:
+      - "8081:8081"
+
+  auction:
+    build:
+      context: ./bidly-backend/bidly-backend-aunction
+      target: runtime
+    restart: unless-stopped
+    environment:
+      AUCTION_SERVICE_PORT: "8082"
+      AUCTION_DATABASE_URL: auction_user:auction_password@tcp(mysql:3306)/auction_db?parseTime=true&loc=UTC&charset=utf8mb4&collation=utf8mb4_unicode_ci
+      JWT_SECRET: bidly-local-shared-secret-change-me-123456789
+      AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: minioadmin
+      AWS_SECRET_ACCESS_KEY: minioadmin123
+      AWS_S3_BUCKET: auction-images
+      S3_ENDPOINT: http://pi.local:9000
+      S3_USE_PATH_STYLE: "true"
+      S3_PUBLIC_BASE_URL: http://pi.local:9000/auction-images
+    depends_on:
+      mysql-init:
+        condition: service_completed_successfully
+      minio-init:
+        condition: service_completed_successfully
+    ports:
+      - "8082:8082"
+
+  auth-frontend:
+    build:
+      context: ./bidly-frontend
+      dockerfile: bidly-frontend-auth/Dockerfile
+      args:
+        VITE_AUCTION_APP_URL: http://pi.local:5174
+    restart: unless-stopped
+    depends_on:
+      - auth
+    ports:
+      - "5173:80"
+
+  auction-frontend:
+    build:
+      context: ./bidly-frontend
+      dockerfile: bidly-frontend-aunction/Dockerfile
+      args:
+        VITE_AUTH_APP_URL: http://pi.local:5173
+        VITE_S3_PUBLIC_BASE_URL: http://pi.local:9000/auction-images
+    restart: unless-stopped
+    depends_on:
+      - auction
+    ports:
+      - "5174:80"
+
+volumes:
+  mysql_data:
+  minio_data:
