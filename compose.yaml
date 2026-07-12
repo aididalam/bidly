@@ -102,8 +102,7 @@ services:
 
   auth-frontend:
     build:
-      context: ./bidly-frontend
-      dockerfile: bidly-frontend-auth/Dockerfile
+      context: ./bidly-frontend/bidly-frontend-auth
       args:
         VITE_AUCTION_APP_URL: http://pi.local:5174
     restart: unless-stopped
@@ -114,8 +113,7 @@ services:
 
   auction-frontend:
     build:
-      context: ./bidly-frontend
-      dockerfile: bidly-frontend-aunction/Dockerfile
+      context: ./bidly-frontend/bidly-frontend-aunction
       args:
         VITE_AUTH_APP_URL: http://pi.local:5173
         VITE_S3_PUBLIC_BASE_URL: http://pi.local:9000/auction-images

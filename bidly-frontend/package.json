@@ -1,1 +1,0 @@
-{"name":"auction-frontends","private":true,"workspaces":["bidly-frontend-auth","bidly-frontend-aunction"],"scripts":{"test":"npm run test --workspaces --if-present","typecheck":"npm run typecheck --workspaces","build":"npm run build --workspaces"}}
