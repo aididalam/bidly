@@ -1,15 +1,20 @@
 [submodule "bidly-backend/bidly-backend-auth"]
 	path = bidly-backend/bidly-backend-auth
 	url = https://github.com/aididalam/bidly-backend-auth.git
+	branch = main
 [submodule "bidly-backend/bidly-backend-aunction"]
 	path = bidly-backend/bidly-backend-aunction
 	url = https://github.com/aididalam/bidly-backend-aunction.git
+	branch = main
 [submodule "bidly-frontend/bidly-frontend-auth"]
 	path = bidly-frontend/bidly-frontend-auth
 	url = https://github.com/aididalam/bidly-frontend-auth.git
+	branch = main
 [submodule "bidly-frontend/bidly-frontend-aunction"]
 	path = bidly-frontend/bidly-frontend-aunction
 	url = https://github.com/aididalam/bidly-frontend-aunction.git
+	branch = main
 [submodule "bidly-argo-cd"]
 	path = bidly-argo-cd
 	url = https://github.com/aididalam/bidly-argo-cd.git
+	branch = main

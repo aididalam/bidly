@@ -1,0 +1,59 @@
+name: Update submodule pointers
+
+on:
+  repository_dispatch:
+    types: [submodule-main-updated]
+  workflow_dispatch:
+    inputs:
+      submodule_path:
+        description: Submodule path to update
+        required: true
+        type: choice
+        options:
+          - bidly-backend/bidly-backend-auth
+          - bidly-backend/bidly-backend-aunction
+          - bidly-frontend/bidly-frontend-auth
+          - bidly-frontend/bidly-frontend-aunction
+          - bidly-argo-cd
+
+permissions:
+  contents: write
+
+concurrency:
+  group: submodule-pointer-updates
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    env:
+      SUBMODULE_PATH: ${{ github.event.client_payload.submodule_path || inputs.submodule_path }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+          token: ${{ secrets.BIDLY_ROOT_DISPATCH_TOKEN }}
+
+      - name: Verify submodule path
+        run: |
+          case "$SUBMODULE_PATH" in
+            bidly-backend/bidly-backend-auth|bidly-backend/bidly-backend-aunction|bidly-frontend/bidly-frontend-auth|bidly-frontend/bidly-frontend-aunction|bidly-argo-cd) ;;
+            *) echo "Unsupported submodule path: $SUBMODULE_PATH" >&2; exit 1 ;;
+          esac
+
+      - name: Update pointer to latest main
+        run: git submodule update --remote -- "$SUBMODULE_PATH"
+
+      - name: Commit and push pointer update
+        run: |
+          if git diff --quiet -- "$SUBMODULE_PATH"; then
+            echo "Already points to the latest main commit."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$SUBMODULE_PATH"
+          git commit -m "chore: update $SUBMODULE_PATH"
+          git push origin HEAD:main
