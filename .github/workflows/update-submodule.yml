@@ -42,20 +42,20 @@ jobs:
             *) echo "Unsupported submodule path: $SUBMODULE_PATH" >&2; exit 1 ;;
           esac
 
-      - name: Update pointer to latest main
-        run: git submodule update --remote -- "$SUBMODULE_PATH"
+      - name: Update all pointers to latest main
+        run: git submodule update --init --remote --recursive
 
-      - name: Commit and push pointer update
+      - name: Commit and push pointer updates
         run: |
-          if git diff --quiet -- "$SUBMODULE_PATH"; then
-            echo "Already points to the latest main commit."
+          if git diff --quiet -- bidly-backend bidly-frontend bidly-argo-cd; then
+            echo "Already points to the latest main commits."
             exit 0
           fi
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "$SUBMODULE_PATH"
-          git commit -m "chore: update $SUBMODULE_PATH"
+          git add bidly-backend bidly-frontend bidly-argo-cd
+          git commit -m "chore: update submodules"
           for attempt in 1 2 3; do
             git push origin HEAD:main && exit 0
             git pull --rebase origin main
