@@ -116,7 +116,8 @@ services:
       context: ./bidly-frontend/bidly-frontend-aunction
       args:
         VITE_AUTH_APP_URL: http://pi.local:5173
-        VITE_S3_PUBLIC_BASE_URL: http://pi.local:9000/auction-images
+    environment:
+      S3_PUBLIC_BASE_URL: http://pi.local:9000/auction-images
     restart: unless-stopped
     depends_on:
       - auction
